@@ -105,8 +105,10 @@ test("save with valid inputs uploads a cache", async () => {
     expect(failedMock).toHaveBeenCalledTimes(0);
 });
 
-test("save failing logs the warning message", async () => {
+test("save failing logs the debug message", async () => {
+    const debugMock = jest.spyOn(core, "debug");
     const warningMock = jest.spyOn(core, "warning");
+    const failedMock = jest.spyOn(core, "setFailed");
 
     const primaryKey = "Linux-node-bb828da54c148048dd17899ba9fda624811cfb43";
 
@@ -115,6 +117,9 @@ test("save failing logs the warning message", async () => {
     testUtils.setInput(Inputs.Path, inputPath);
     testUtils.setInput(Inputs.UploadChunkSize, "4000000");
 
+    // A read-only / write-denied save surfaces to the action as saveCache resolving
+    // to -1; the toolkit has already logged the underlying reason. The action
+    // must not fail the job or emit its own warning.
     const cacheId = -1;
     const saveCacheMock = jest
         .spyOn(cache, "saveCache")
@@ -134,6 +139,7 @@ test("save failing logs the warning message", async () => {
         false
     );
 
-    expect(warningMock).toHaveBeenCalledTimes(1);
-    expect(warningMock).toHaveBeenCalledWith("Cache save failed.");
+    expect(debugMock).toHaveBeenCalledWith("Cache was not saved.");
+    expect(warningMock).not.toHaveBeenCalled();
+    expect(failedMock).not.toHaveBeenCalled();
 });
